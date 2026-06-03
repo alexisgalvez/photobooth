@@ -172,41 +172,60 @@ async function scrapeGallery() {
 
   try {
     console.log(`[Scraper] Polling gallery: ${targetUrl}...`);
-    const response = await axios.get(targetUrl, {
-      timeout: 8000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-      }
-    });
-    
-    const html = response.data;
-    const $ = cheerio.load(html);
-    const selectors = (config.galleryImageSelector || 'img').split(',');
-    
     const foundUrls = [];
-    
-    selectors.forEach(selectorStr => {
-      const cleanSelector = selectorStr.trim();
-      if (!cleanSelector) return;
-      
-      $(cleanSelector).each((i, element) => {
-        let src = $(element).attr('src') || $(element).attr('href') || $(element).attr('data-src') || $(element).attr('data-lightbox');
-        if (src) {
-          try {
-            // Resolve relative URLs to absolute URLs
-            const absoluteUrl = new URL(src, targetUrl).href;
-            if (absoluteUrl.startsWith('http') && !foundUrls.includes(absoluteUrl) && !absoluteUrl.includes('google-analytics')) {
-              foundUrls.push(absoluteUrl);
-            }
-          } catch (e) {
-            // Fallback if URL parsing fails
-            if (src.startsWith('http') && !foundUrls.includes(src)) {
-              foundUrls.push(src);
+
+    // Special handler for Madrid Creations Live Photo Pool (Firebase/Firestore backend)
+    if (targetUrl.includes('madridcreations.ca/photopool')) {
+      console.log('[Scraper] Detected Madrid Creations Live Photo Pool. Querying Firestore REST API...');
+      const firestoreUrl = 'https://firestore.googleapis.com/v1/projects/spring-dance-photo-pool-01/databases/(default)/documents/photos';
+      const apiResponse = await axios.get(firestoreUrl, { timeout: 8000 });
+      if (apiResponse.data && apiResponse.data.documents) {
+        apiResponse.data.documents.forEach(doc => {
+          if (doc.fields && doc.fields.url && doc.fields.url.stringValue) {
+            // Only scrape if not archived
+            const isArchived = doc.fields.archived && doc.fields.archived.booleanValue === true;
+            if (!isArchived) {
+              foundUrls.push(doc.fields.url.stringValue);
             }
           }
+        });
+      }
+    } else {
+      // Standard static HTML scraping logic using Cheerio
+      const response = await axios.get(targetUrl, {
+        timeout: 8000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
         }
       });
-    });
+      
+      const html = response.data;
+      const $ = cheerio.load(html);
+      const selectors = (config.galleryImageSelector || 'img').split(',');
+      
+      selectors.forEach(selectorStr => {
+        const cleanSelector = selectorStr.trim();
+        if (!cleanSelector) return;
+        
+        $(cleanSelector).each((i, element) => {
+          let src = $(element).attr('src') || $(element).attr('href') || $(element).attr('data-src') || $(element).attr('data-lightbox');
+          if (src) {
+            try {
+              // Resolve relative URLs to absolute URLs
+              const absoluteUrl = new URL(src, targetUrl).href;
+              if (absoluteUrl.startsWith('http') && !foundUrls.includes(absoluteUrl) && !absoluteUrl.includes('google-analytics')) {
+                foundUrls.push(absoluteUrl);
+              }
+            } catch (e) {
+              // Fallback if URL parsing fails
+              if (src.startsWith('http') && !foundUrls.includes(src)) {
+                foundUrls.push(src);
+              }
+            }
+          }
+        });
+      });
+    }
 
     // Check against DB for new items
     const newUrls = foundUrls.filter(url => !db.originalUrls.includes(url));
