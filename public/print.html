@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Photo Booth Print Frame</title>
+  <style>
+    @page {
+      size: 6in 4in; /* Standard landscape 4x6" print dimension */
+      margin: 0;     /* Remove header/footer page info (URL, Date, Page Number) */
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #ffffff;
+    }
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain; /* Standard fit to fill the full 6x4" print canvas */
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <img id="print-image" src="" alt="Preparing Print Content">
+  <script>
+    // Grab the processed image path from the URL parameters (?img=/processed/uuid.jpg)
+    const params = new URLSearchParams(window.location.search);
+    const imgUrl = params.get('img');
+    if (imgUrl) {
+      const img = document.getElementById('print-image');
+      img.src = imgUrl;
+      
+      img.onload = () => {
+        // Post message to parent that the image is fully loaded and ready to print
+        if (window.parent) {
+          window.parent.postMessage({ type: 'PRINT_READY', url: imgUrl }, '*');
+        }
+      };
+      img.onerror = () => {
+        if (window.parent) {
+          window.parent.postMessage({ type: 'PRINT_ERROR', url: imgUrl }, '*');
+        }
+      };
+    }
+  </script>
+</body>
+</html>

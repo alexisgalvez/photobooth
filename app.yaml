@@ -1,0 +1,12 @@
+runtime: nodejs22
+
+# Use F1 instance class (eligible for GCP Always Free tier)
+instance_class: F1
+
+# We restrict to exactly 1 instance to keep local scraper database and image states consistent.
+# One F1 instance running 24/7 is completely covered by App Engine's 28-hours-per-day free tier.
+automatic_scaling:
+  min_instances: 1
+  max_instances: 1
+
+

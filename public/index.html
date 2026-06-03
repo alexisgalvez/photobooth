@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Photo Booth Print Kiosk</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  
+  <div class="app-container">
+    
+    <!-- Top Dashboard Header -->
+    <header>
+      <div class="brand-section">
+        <div class="brand-logo">⚡</div>
+        <div class="brand-title">
+          <h1>PRINT BRIDGE</h1>
+          <p>HP Sprocket ➔ SELPHY CP1500</p>
+        </div>
+      </div>
+      
+      <div class="status-panel">
+        <!-- Polling Indicator -->
+        <div id="polling-badge" class="status-badge polling">
+          <div class="status-dot"></div>
+          <span>Server Active</span>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="btn-group">
+          <a href="/mock-gallery" class="btn" target="_blank">🖼️ Mock Gallery</a>
+          <button id="settings-btn" class="btn">⚙️ Settings</button>
+          <button id="reset-btn" class="btn btn-danger">🗑️ Reset Event</button>
+        </div>
+      </div>
+    </header>
+    
+    <!-- Main Workspace -->
+    <div class="workspace">
+      
+      <!-- Left Sidebar (Print Status, Venue Settings) -->
+      <aside class="sidebar">
+        <!-- Live Counters -->
+        <div class="info-widget">
+          <h3 class="widget-title">Session Statistics</h3>
+          <div class="info-row">
+            <span class="info-label">Total Photos:</span>
+            <span id="stat-total" class="info-value">0</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Auto-Printed:</span>
+            <span id="stat-printed" class="info-value">0</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Queue Length:</span>
+            <span id="stat-queue" class="info-value">0</span>
+          </div>
+        </div>
+        
+        <!-- Live Print Queue -->
+        <div class="queue-widget">
+          <h3 class="widget-title">Print Queue</h3>
+          <ul id="queue-list" class="queue-list">
+            <!-- Queue items dynamically appended -->
+            <li class="queue-empty-text">Queue is idle</li>
+          </ul>
+        </div>
+        
+        <!-- Settings Overview -->
+        <div class="info-widget">
+          <h3 class="widget-title">Bridge Profile</h3>
+          <div class="info-row">
+            <span class="info-label">Device Type:</span>
+            <span id="profile-device" class="info-value">Android Kiosk</span>
+          </div>
+          <div class="info-row" style="flex-direction: column; gap: 4px; margin-top: 6px;">
+            <span class="info-label">Scraper Target URL:</span>
+            <span id="profile-url" class="info-value" style="font-size: 10px; word-break: break-all; color: var(--accent-cyan);">Loading...</span>
+          </div>
+        </div>
+      </aside>
+      
+      <!-- Right Main Grid (Live Guest Photo Wall) -->
+      <main class="gallery-wall">
+        <div class="gallery-header">
+          <h2 style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+            📸 Guest Photo Wall
+          </h2>
+          <span id="gallery-count-badge" class="gallery-count">0 photos captured</span>
+        </div>
+        
+        <div id="gallery-grid" class="gallery-grid">
+          <!-- Gallery photos dynamically appended -->
+          <div class="gallery-empty">
+            <div class="gallery-empty-icon">🎨</div>
+            <p style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">Waiting for first snapshot</p>
+            <p style="font-size: 13px;">Photos taken in the booth will appear here and print automatically.</p>
+          </div>
+        </div>
+      </main>
+      
+    </div>
+  </div>
+  
+  <!-- Hidden Iframe Container for Silent Printing -->
+  <div id="print-iframe-container">
+    <iframe id="print-frame" src="about:blank"></iframe>
+  </div>
+  
+  <!-- Toast Notifications Wrapper -->
+  <div id="toast-container" class="toast-container"></div>
+  
+  <!-- Configuration Settings Modal -->
+  <div id="settings-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>⚙️ Kiosk Settings</h2>
+        <button id="modal-close-btn" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height: 70vh; overflow-y: auto; padding-right: 4px;">
+        
+        <!-- HP Sprocket Scraper URL Input -->
+        <div class="form-group">
+          <label for="setting-target-url">HP Gallery URL (Target Webpage)</label>
+          <input type="text" id="setting-target-url" placeholder="https://example.com/my-event-gallery">
+          <span style="font-size: 10px; color: var(--text-muted);">Paste the online landing page URL where the HP booth uploads photos.</span>
+        </div>
+        
+        <!-- HP Sprocket CSS Selector Scraper -->
+        <div class="form-group">
+          <label for="setting-image-selector">CSS Selector for Scraped Photos</label>
+          <input type="text" id="setting-image-selector" placeholder="img.gallery-photo, a[href$='.jpg']">
+          <span style="font-size: 10px; color: var(--text-muted);">CSS search terms to extract image tags. Comma-separated.</span>
+        </div>
+        
+        <div class="form-group">
+          <label for="setting-auto-print">Auto-Print New Images</label>
+          <select id="setting-auto-print">
+            <option value="true">Enabled (Background Print)</option>
+            <option value="false">Disabled (View Only)</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="setting-poll-rate">Tablet Fetch Rate (Seconds)</label>
+          <input type="number" id="setting-poll-rate" value="3" min="1" max="10">
+        </div>
+        
+        <div class="form-group">
+          <label for="setting-print-delay">Cooling Delay Between Prints (Seconds)</label>
+          <input type="number" id="setting-print-delay" value="4" min="1" max="20">
+          <span style="font-size: 10px; color: var(--text-muted);">Gives the Canon SELPHY queue time to spin up and load the paper.</span>
+        </div>
+
+        <div class="form-group">
+          <label for="setting-bg-color">Canvas Border/Background Color</label>
+          <input type="color" id="setting-bg-color" value="#ffffff">
+          <span style="font-size: 10px; color: var(--text-muted);">Background padding color used when centering the HP Sprocket's aspect ratio.</span>
+        </div>
+        
+      </div>
+      <div class="modal-footer">
+        <button id="modal-save-btn" class="btn btn-primary">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

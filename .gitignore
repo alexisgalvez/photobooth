@@ -1,0 +1,22 @@
+# Node.js dependencies
+node_modules/
+
+# Local databases and runtime configuration (contains secrets and local state)
+.env
+db.json
+config.json
+
+# Local temp and upload directories
+public/mock_uploads/*
+!public/mock_uploads/.gitkeep
+public/processed/*
+!public/processed/.gitkeep
+public/temp/*
+!public/temp/.gitkeep
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+photo-booth-printing-bridge.zip

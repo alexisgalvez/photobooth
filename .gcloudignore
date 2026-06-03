@@ -1,0 +1,22 @@
+# This file specifies files and directories to ignore when deploying with gcloud.
+
+# Common files to ignore
+.gcloudignore
+.git
+.gitignore
+
+# Node.js dependencies
+node_modules/
+
+# Local databases and configs
+.env
+db.json
+config.json
+
+# Processed images and uploads (handled in writeable /tmp on GAE)
+public/mock_uploads/
+public/processed/
+public/temp/
+
+# Zip files
+photo-booth-printing-bridge.zip
