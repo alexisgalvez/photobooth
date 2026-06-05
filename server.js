@@ -283,6 +283,30 @@ app.get('/api/photos', (req, res) => {
   res.json(db.photos);
 });
 
+// Endpoint to receive a photo URL directly and trigger processing pipeline
+app.post('/api/photos', async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) {
+      return res.status(400).json({ error: 'URL is required.' });
+    }
+    console.log(`[API] Manually queueing photo for printing: ${url}`);
+    
+    // Check if we already processed this exact URL to prevent duplicates
+    if (db.originalUrls.includes(url)) {
+      console.log(`[API] Photo already processed, returning cached version`);
+      const existing = db.photos.find(p => p.originalUrl === url);
+      return res.json({ success: true, cached: true, photo: existing });
+    }
+
+    const photo = await processAndAddPhoto(url);
+    res.json({ success: true, photo });
+  } catch (err) {
+    console.error(`[API] Failed to process manual photo URL:`, err.message);
+    res.status(500).json({ error: 'Failed to process photo URL: ' + err.message });
+  }
+});
+
 // Settings Management API
 app.get('/api/config', (req, res) => {
   res.json(config);
